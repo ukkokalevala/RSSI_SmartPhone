@@ -1,0 +1,82 @@
+#include <ESP8266WiFi.h>         // Include the Wi-Fi library for ESP8266
+#include "secrets.h"
+// Replace with your network credentials
+//const char* ssid = "your_SSID";
+//const char* password = "your_PASSWORD";
+
+// Set up the web server on port 80
+WiFiServer server(80);
+
+// Define the pin for the LED
+#define LED_PIN D7  // GPIO5
+
+void setup() {
+  // Start the Serial communication
+  Serial.begin(9600);
+
+  // Initialize the LED pin as an output
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);  // Start with the LED off
+
+  // Connect to Wi-Fi
+  Serial.println("Connecting to Wi-Fi...");
+  WiFi.begin(ssid, password);
+
+  // Wait for connection
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  // Print the local IP address
+  Serial.println("");
+  Serial.println("Wi-Fi connected.");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+
+  // Start the web server
+  server.begin();
+}
+
+void loop() {
+  // Check if a client has connected
+  WiFiClient client = server.available();
+  if (!client) {
+    // If no client is connected, turn off the LED
+    digitalWrite(LED_PIN, LOW);
+    return;
+  }
+
+  // Turn on the LED when a client connects
+  digitalWrite(LED_PIN, HIGH);
+
+  // Wait for the client to send some data
+  while(!client.available()){
+    delay(1);
+  }
+
+  // Read the request
+  String request = client.readStringUntil('\r');
+  client.flush();
+
+  // Prepare the response: Wi-Fi signal strength (RSSI)
+  int rssi = WiFi.RSSI();
+  String response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
+  response += "<!DOCTYPE HTML><html><body style='text-align:center;'>";
+  response += "<h1>Wi-Fi Signal Strength (RSSI):</h1>";
+  response += "<div style='display:inline-block; background-color:black; color:yellow; padding:10px; border-radius:5px;'>";
+  response += "<h2>";
+  response += rssi;
+  response += " dBm</h2>";
+  response += "</div>";
+  response += "</body></html>";
+
+  // Send the response to the client
+  client.print(response);
+
+  // Close the connection
+  client.stop();
+
+  // Turn off the LED after serving the client
+  digitalWrite(LED_PIN, LOW);
+}
